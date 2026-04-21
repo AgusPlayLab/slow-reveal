@@ -2,68 +2,31 @@
 <html lang="es">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Slow Reveal — Vertical</title>
-
   <link rel="stylesheet" href="css/reveal.css" />
 </head>
-
 <body>
-  <!-- Fullscreen component -->
   <div class="reveal is-loading" id="reveal" role="region" aria-label="Comparador de imágenes vertical">
-
-    <!-- Background blur layer is done via CSS ::before (using --bg-image set from JS) -->
-
-    <!-- Frame holds images (clipped), not the UI -->
-    <div class="reveal__frame" aria-hidden="true">
-      <!-- Use a tiny placeholder so nothing flashes while we preload -->
-      <img
-        id="bottomImg"
-        class="reveal__img reveal__img--bottom"
-        src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw=="
-        alt=""
-      />
-
-      <div class="reveal__top-layer" id="topLayer" aria-hidden="true">
-        <img
-          id="topImg"
-          class="reveal__img reveal__img--top"
-          src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw=="
-          alt=""
-        />
+    <div class="reveal__canvas" id="canvas" aria-hidden="true">
+      <img id="bottomImg" class="reveal__img reveal__img--bottom" alt="Imagen inferior" />
+      <img id="topImg" class="reveal__img reveal__img--top" alt="Imagen superior" />
+      <div class="reveal__slider" id="slider" aria-hidden="true">
+        <div class="reveal__edge-fade" id="edgeFade" aria-hidden="true"></div>
+        <div class="reveal__line" aria-hidden="true"></div>
+        <button class="reveal__handle" id="handle" type="button" aria-label="Arrastra verticalmente para revelar" title="Arrastra">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 6v12"></path><path d="M8 10l4-4 4 4"></path><path d="M8 14l4 4 4-4"></path>
+          </svg>
+        </button>
       </div>
     </div>
-
-    <!-- Slider UI -->
-    <div class="reveal__slider" id="slider" aria-hidden="true">
-      <div class="reveal__edge-fade" id="edgeFade" aria-hidden="true"></div>
-      <div class="reveal__line" aria-hidden="true"></div>
-
-      <button
-        class="reveal__handle"
-        id="handle"
-        type="button"
-        aria-label="Arrastra verticalmente para revelar"
-        title="Arrastra"
-      >
-        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <path d="M12 6v12"></path>
-          <path d="M8 10l4-4 4 4"></path>
-          <path d="M8 14l4 4 4-4"></path>
-        </svg>
-      </button>
-    </div>
-
-    <!-- Hint with smooth cross-fade (down <-> up) -->
     <div class="reveal__hint" id="hint" aria-hidden="true">
-      <span class="hint__down">Desliza hacia abajo ↓</span>
-      <span class="hint__up">Desliza hacia arriba ↑</span>
+      <span class="hint__down">Desliza hacia abajo... con suavidad</span>
+      <span class="hint__up">Desliza hacia arriba... con suavidad</span>
     </div>
-
-    <!-- Optional: subtle loading veil -->
-    <div class="reveal__veil" id="veil" aria-hidden="true"></div>
+    <div class="reveal__veil" aria-hidden="true"></div>
   </div>
-
   <script src="js/reveal.js" defer></script>
 </body>
 </html>

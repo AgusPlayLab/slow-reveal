@@ -1,22 +1,23 @@
 {
   "images": ["images/top.jpg", "images/bottom.jpg"],
-  "fitMode": "contain",
-  "objectPosition": "center center",
+
   "overlayOpacity": 1,
 
   "edgeFade": true,
   "fadeSize": 44,
 
   "initialSepPercent": 25,
-
-  "clampMinPercent": 4,
-  "clampMaxPercent": 96,
+  "clampMinPercent": 3,
+  "clampMaxPercent": 97,
 
   "bgBlur": 24,
   "bgDim": 0.38,
   "bgSat": 1.10,
 
-  "hintDownThreshold": 55,
-  "hintUpThreshold": 45,
-  "hintAutoHideMs": 2600
+  "hintDownThreshold": 58,
+  "hintUpThreshold": 42,
+  "hintAutoHideMs": 2800,
+
+  "maxCanvasWidth": 100,
+  "maxCanvasHeight": 100
 }

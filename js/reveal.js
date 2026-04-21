@@ -1,231 +1,76 @@
 /* js/reveal.js
-   - 2 images: bottom always visible, top revealed via clip-path.
-   - Fullscreen, contain (no crop) + blurred background from bottom image.
-   - No "flash" while loading: preload both, then fade-in.
-   - Smooth drag with rAF + easing (touch + mouse via pointer events).
-   - Hint text cross-fades: "down" vs "up" depending on position, with gentle behavior.
-   - Config merge: config/default.json (base) + config.json (override if exists).
+   - Two images (top/bottom) in a CANVAS that matches contain-rect => slider aligns to image edges.
+   - Preload both images => no flash of bottom.
+   - Smooth drag (pointer events + rAF).
+   - Dynamic hint with smooth crossfade: down <-> up based on separator position.
 */
 
 (() => {
   const $ = (id) => document.getElementById(id);
 
   const el = {
-    container: $("reveal"),
+    reveal: $("reveal"),
+    canvas: $("canvas"),
     topImg: $("topImg"),
     bottomImg: $("bottomImg"),
     slider: $("slider"),
     handle: $("handle"),
     hint: $("hint"),
     edgeFade: $("edgeFade"),
-    veil: $("veil"),
   };
 
   const DEFAULTS = {
-    images: ["images/top.jpg", "images/bottom.jpg"], // [top, bottom]
-    fitMode: "contain",                 // show full image
-    objectPosition: "center center",
-    overlayOpacity: 1,
+    images: ["images/top.jpg", "images/bottom.jpg"],
 
+    overlayOpacity: 1,
     edgeFade: true,
     fadeSize: 44,
 
-    // separator from top: 25 => top visible ~75%
+    // Separator inside canvas: 25 => top visible ~75%
     initialSepPercent: 25,
 
-    // Keep handle away from system UI
-    clampMinPercent: 4,
-    clampMaxPercent: 96,
+    // Keep handle away from canvas edges a bit (pro feel)
+    clampMinPercent: 3,
+    clampMaxPercent: 97,
 
-    // Blur background tuning
+    // Background blur
     bgBlur: 24,
     bgDim: 0.38,
     bgSat: 1.10,
 
-    // Hint behavior thresholds with hysteresis
-    hintDownThreshold: 55, // when sep > 55 => suggest "up"
-    hintUpThreshold: 45,   // when sep < 45 => suggest "down"
-    hintAutoHideMs: 2600   // after interaction ends
+    // Hint dynamics with hysteresis
+    hintDownThreshold: 58, // if sep > 58% => suggest "up"
+    hintUpThreshold: 42,   // if sep < 42% => suggest "down"
+    hintAutoHideMs: 2800,
+
+    // How big should the image appear on screen (contain)
+    maxCanvasWidth:  100,  // percent of viewport width
+    maxCanvasHeight: 100   // percent of viewport height
   };
 
   let config = { ...DEFAULTS };
 
-  // State
-  let rect = null;
-  let isDragging = false;
+  // rAF state
   let rafId = null;
+  let isDragging = false;
 
-  // --sep: separator position from top (0..100)
-  let currentSep = config.initialSepPercent;
-  let targetSep = currentSep;
+  // sep is % from top inside canvas
+  let currentSep = 25;
+  let targetSep = 25;
 
-  // Easing
-  const EASE_WHILE_DRAG = 0.42; // very responsive
-  const EASE_WHEN_IDLE  = 0.18; // gentle ease after release
+  const EASE_WHILE_DRAG = 0.45;
+  const EASE_WHEN_IDLE  = 0.18;
 
-  // Hint state
-  let hintMode = "down"; // "down" or "up"
+  // hint
+  let hintMode = "down"; // "down" | "up"
   let hintHideTimer = null;
   let hasInteracted = false;
 
+  // cache canvas rect for pointer mapping
+  let canvasRect = null;
+
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
-  function updateRect() {
-    rect = el.container.getBoundingClientRect();
-  }
-
-  function clientYToSep(clientY) {
-    if (!rect) updateRect();
-    const y = clientY - rect.top;
-    const raw = (y / rect.height) * 100;
-    return clamp(raw, config.clampMinPercent, config.clampMaxPercent);
-  }
-
-  function applySep(p) {
-    currentSep = clamp(p, config.clampMinPercent, config.clampMaxPercent);
-    el.container.style.setProperty("--sep", currentSep + "%");
-  }
-
-  function applyVisualConfig() {
-    el.container.style.setProperty("--fit-mode", config.fitMode || "contain");
-    el.container.style.setProperty("--object-position", config.objectPosition || "center center");
-    el.container.style.setProperty("--fade-size", (config.fadeSize ?? 44) + "px");
-
-    // Blur tuning
-    el.container.style.setProperty("--bg-blur", (config.bgBlur ?? 24) + "px");
-    el.container.style.setProperty("--bg-dim", String(config.bgDim ?? 0.38));
-    el.container.style.setProperty("--bg-sat", String(config.bgSat ?? 1.10));
-
-    // Top opacity
-    el.topImg.style.opacity = String(
-      (typeof config.overlayOpacity === "number") ? config.overlayOpacity : 1
-    );
-
-    // Edge fade toggle
-    el.edgeFade.style.opacity = config.edgeFade ? "0.95" : "0";
-  }
-
-  function setBlurBackground(bottomSrc) {
-    if (bottomSrc) {
-      el.container.style.setProperty("--bg-image", `url("${bottomSrc}")`);
-    }
-  }
-
-  // --- Hint behavior ---
-  function setHintMode(mode) {
-    if (!el.hint) return;
-    if (hintMode === mode) return;
-    hintMode = mode;
-    el.hint.classList.toggle("is-up", mode === "up");
-  }
-
-  function updateHintBySep(sep) {
-    // Hysteresis so it doesn't flicker around one boundary
-    if (hintMode === "down" && sep > config.hintDownThreshold) setHintMode("up");
-    else if (hintMode === "up" && sep < config.hintUpThreshold) setHintMode("down");
-  }
-
-  function showHintSubtle() {
-    if (!el.hint) return;
-    el.hint.classList.remove("is-hidden");
-    if (hasInteracted) el.hint.classList.add("is-subtle");
-  }
-
-  function scheduleHintHide() {
-    if (!el.hint) return;
-    clearTimeout(hintHideTimer);
-    hintHideTimer = setTimeout(() => {
-      el.hint.classList.add("is-hidden");
-    }, config.hintAutoHideMs);
-  }
-
-  function pulseHandle() {
-    el.handle.classList.remove("is-pulsing");
-    void el.handle.offsetWidth; // restart animation
-    el.handle.classList.add("is-pulsing");
-    setTimeout(() => el.handle.classList.remove("is-pulsing"), 240);
-  }
-
-  // --- Animation loop ---
-  function ensureRAF() {
-    if (rafId == null) rafId = requestAnimationFrame(tick);
-  }
-
-  function tick() {
-    rafId = null;
-
-    const ease = isDragging ? EASE_WHILE_DRAG : EASE_WHEN_IDLE;
-    currentSep += (targetSep - currentSep) * ease;
-
-    // snap
-    if (Math.abs(targetSep - currentSep) < 0.02) currentSep = targetSep;
-
-    applySep(currentSep);
-    updateHintBySep(currentSep);
-
-    if (isDragging || Math.abs(targetSep - currentSep) >= 0.02) {
-      rafId = requestAnimationFrame(tick);
-    }
-  }
-
-  // --- Pointer events ---
-  function onPointerDown(e) {
-    if (e.pointerType === "mouse" && e.button !== 0) return;
-    e.preventDefault();
-
-    updateRect();
-    isDragging = true;
-    el.container.classList.add("is-dragging");
-
-    // Hint: show and become subtle after first interaction
-    if (!hasInteracted) hasInteracted = true;
-    showHintSubtle();
-    pulseHandle();
-
-    clearTimeout(hintHideTimer);
-
-    try { el.container.setPointerCapture(e.pointerId); } catch (_) {}
-    targetSep = clientYToSep(e.clientY);
-    ensureRAF();
-  }
-
-  function onPointerMove(e) {
-    if (!isDragging) return;
-    e.preventDefault();
-
-    targetSep = clientYToSep(e.clientY);
-    ensureRAF();
-  }
-
-  function onPointerUp(e) {
-    if (!isDragging) return;
-    e.preventDefault();
-
-    isDragging = false;
-    el.container.classList.remove("is-dragging");
-
-    try { el.container.releasePointerCapture(e.pointerId); } catch (_) {}
-
-    // Hide hint after a bit
-    scheduleHintHide();
-    ensureRAF();
-  }
-
-  function bindEvents() {
-    // Drag anywhere: handle, slider, or the whole container
-    el.handle.addEventListener("pointerdown", onPointerDown, { passive: false });
-    el.slider.addEventListener("pointerdown", onPointerDown, { passive: false });
-    el.container.addEventListener("pointerdown", onPointerDown, { passive: false });
-
-    window.addEventListener("pointermove", onPointerMove, { passive: false });
-    window.addEventListener("pointerup", onPointerUp, { passive: false });
-    window.addEventListener("pointercancel", onPointerUp, { passive: false });
-
-    window.addEventListener("resize", updateRect);
-    el.container.addEventListener("dragstart", (ev) => ev.preventDefault());
-  }
-
-  // --- Config loading (merge base + override) ---
   async function fetchJson(path) {
     try {
       const res = await fetch(path, { cache: "no-cache" });
@@ -244,59 +89,216 @@
     if (override) config = { ...config, ...override };
   }
 
-  // --- Preload to avoid flashes ---
+  function applyConfigToCSS() {
+    // background blur params
+    el.reveal.style.setProperty("--bg-blur", (config.bgBlur ?? 24) + "px");
+    el.reveal.style.setProperty("--bg-dim", String(config.bgDim ?? 0.38));
+    el.reveal.style.setProperty("--bg-sat", String(config.bgSat ?? 1.10));
+
+    // edge fade
+    el.reveal.style.setProperty("--fade-size", (config.fadeSize ?? 44) + "px");
+    el.edgeFade.style.opacity = config.edgeFade ? "0.95" : "0";
+
+    // opacity for top
+    el.topImg.style.opacity = String(
+      (typeof config.overlayOpacity === "number") ? config.overlayOpacity : 1
+    );
+  }
+
   function preloadImage(url) {
     return new Promise((resolve) => {
-      if (!url) return resolve(false);
       const img = new Image();
-      img.onload = () => resolve(true);
-      img.onerror = () => resolve(false);
+      img.onload = () => resolve(img);
+      img.onerror = () => resolve(img);
       img.src = url;
     });
   }
 
-  async function preloadAndApplyImages() {
-    const list = Array.isArray(config.images) ? config.images : null;
-    const topSrc = (list && list[0]) || config.topImage || "images/top.jpg";
-    const bottomSrc = (list && list[1]) || config.bottomImage || "images/bottom.jpg";
-
-    // Preload both
-    await Promise.all([preloadImage(topSrc), preloadImage(bottomSrc)]);
-
-    // Apply sources only after preload
-    el.topImg.src = topSrc;
-    el.bottomImg.src = bottomSrc;
-
-    // Blur background from bottom
-    setBlurBackground(bottomSrc);
+  function setHintMode(mode) {
+    if (hintMode === mode) return;
+    hintMode = mode;
+    el.hint.classList.toggle("is-up", mode === "up");
   }
 
-  function applyInitialSep() {
-    const v = Number(config.initialSepPercent ?? config.initialClipPercent ?? 25);
-    currentSep = clamp(v, config.clampMinPercent, config.clampMaxPercent);
-    targetSep = currentSep;
+  function updateHintBySep(sep) {
+    // hysteresis prevents flicker
+    if (hintMode === "down" && sep > config.hintDownThreshold) setHintMode("up");
+    else if (hintMode === "up" && sep < config.hintUpThreshold) setHintMode("down");
+  }
+
+  function showHint() {
+    el.hint.classList.remove("is-hidden");
+    if (hasInteracted) el.hint.classList.add("is-subtle");
+  }
+
+  function scheduleHintHide() {
+    clearTimeout(hintHideTimer);
+    hintHideTimer = setTimeout(() => {
+      el.hint.classList.add("is-hidden");
+    }, config.hintAutoHideMs);
+  }
+
+  function pulseHandle() {
+    el.handle.classList.remove("is-pulsing");
+    void el.handle.offsetWidth;
+    el.handle.classList.add("is-pulsing");
+    setTimeout(() => el.handle.classList.remove("is-pulsing"), 240);
+  }
+
+  function updateCanvasRect() {
+    canvasRect = el.canvas.getBoundingClientRect();
+  }
+
+  function applySep(p) {
+    currentSep = clamp(p, config.clampMinPercent, config.clampMaxPercent);
+    el.reveal.style.setProperty("--sep", currentSep + "%");
+  }
+
+  function ensureRAF() {
+    if (rafId == null) rafId = requestAnimationFrame(tick);
+  }
+
+  function tick() {
+    rafId = null;
+
+    const ease = isDragging ? EASE_WHILE_DRAG : EASE_WHEN_IDLE;
+    currentSep += (targetSep - currentSep) * ease;
+
+    if (Math.abs(targetSep - currentSep) < 0.02) currentSep = targetSep;
+
     applySep(currentSep);
     updateHintBySep(currentSep);
+
+    if (isDragging || Math.abs(targetSep - currentSep) >= 0.02) {
+      rafId = requestAnimationFrame(tick);
+    }
+  }
+
+  function clientYToSep(clientY) {
+    if (!canvasRect) updateCanvasRect();
+    const y = clientY - canvasRect.top;
+    const raw = (y / canvasRect.height) * 100;
+    return clamp(raw, config.clampMinPercent, config.clampMaxPercent);
+  }
+
+  function onPointerDown(e) {
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    e.preventDefault();
+
+    isDragging = true;
+    el.reveal.classList.add("is-dragging");
+
+    hasInteracted = true;
+    showHint();
+    pulseHandle();
+    clearTimeout(hintHideTimer);
+
+    updateCanvasRect();
+    try { el.reveal.setPointerCapture(e.pointerId); } catch {}
+
+    targetSep = clientYToSep(e.clientY);
+    ensureRAF();
+  }
+
+  function onPointerMove(e) {
+    if (!isDragging) return;
+    e.preventDefault();
+    targetSep = clientYToSep(e.clientY);
+    ensureRAF();
+  }
+
+  function onPointerUp(e) {
+    if (!isDragging) return;
+    e.preventDefault();
+
+    isDragging = false;
+    el.reveal.classList.remove("is-dragging");
+
+    try { el.reveal.releasePointerCapture(e.pointerId); } catch {}
+
+    scheduleHintHide();
+    ensureRAF();
+  }
+
+  function bindEvents() {
+    // drag from handle, slider, or whole canvas for friendliness
+    el.handle.addEventListener("pointerdown", onPointerDown, { passive: false });
+    el.slider.addEventListener("pointerdown", onPointerDown, { passive: false });
+    el.canvas.addEventListener("pointerdown", onPointerDown, { passive: false });
+
+    window.addEventListener("pointermove", onPointerMove, { passive: false });
+    window.addEventListener("pointerup", onPointerUp, { passive: false });
+    window.addEventListener("pointercancel", onPointerUp, { passive: false });
+
+    window.addEventListener("resize", () => {
+      layoutCanvasToImage();
+      updateCanvasRect();
+    });
+
+    el.reveal.addEventListener("dragstart", (ev) => ev.preventDefault());
+  }
+
+  function layoutCanvasToImage() {
+    // We compute a canvas size that fits the viewport (contain) with the image aspect ratio.
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+
+    const maxW = vw * (config.maxCanvasWidth / 100);
+    const maxH = vh * (config.maxCanvasHeight / 100);
+
+    // use bottom image natural size (usually same ratio as top)
+    const iw = el.bottomImg.naturalWidth || 1;
+    const ih = el.bottomImg.naturalHeight || 1;
+    const aspect = iw / ih;
+
+    let w = maxW;
+    let h = w / aspect;
+    if (h > maxH) {
+      h = maxH;
+      w = h * aspect;
+    }
+
+    el.canvas.style.width = `${Math.round(w)}px`;
+    el.canvas.style.height = `${Math.round(h)}px`;
   }
 
   async function init() {
-    updateRect();
     await loadConfigMerged();
+    applyConfigToCSS();
 
-    // Apply config visuals first (so loading state looks right)
-    applyVisualConfig();
+    // start loading hidden
+    el.reveal.classList.add("is-loading");
 
-    // Start loading: keep hidden
-    el.container.classList.add("is-loading");
+    const [topSrc, bottomSrc] = Array.isArray(config.images) ? config.images : DEFAULTS.images;
 
-    // Preload, then show
-    await preloadAndApplyImages();
-    applyInitialSep();
+    // preload both
+    const [topPre, bottomPre] = await Promise.all([
+      preloadImage(topSrc),
+      preloadImage(bottomSrc),
+    ]);
 
-    // Reveal UI after a tiny delay for smoother paint
+    // apply src only after both done => no flash
+    el.topImg.src = topSrc;
+    el.bottomImg.src = bottomSrc;
+
+    // set blur background from bottom
+    el.reveal.style.setProperty("--bg-image", `url("${bottomSrc}")`);
+
+    // make canvas match real visible contain rect
+    layoutCanvasToImage();
+    updateCanvasRect();
+
+    // initial sep
+    const initSep = Number(config.initialSepPercent ?? 25);
+    currentSep = clamp(initSep, config.clampMinPercent, config.clampMaxPercent);
+    targetSep = currentSep;
+    applySep(currentSep);
+    updateHintBySep(currentSep);
+
+    // show
     requestAnimationFrame(() => {
-      el.container.classList.remove("is-loading");
-      showHintSubtle();
+      el.reveal.classList.remove("is-loading");
+      showHint();
       scheduleHintHide();
     });
 

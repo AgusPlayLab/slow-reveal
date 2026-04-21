@@ -1,31 +1,15 @@
 /* css/reveal.css */
-
-/* Reset */
 * { box-sizing: border-box; }
 html, body { height: 100%; margin: 0; }
-body {
-  background: #000;
-  overflow: hidden;
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
-}
+body { background:#000; overflow:hidden; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
 
-/* Fullscreen component */
-.reveal {
-  /* Controlled from JS/config */
-  --sep: 25%;                  /* separator from top */
-  --fade-size: 44px;           /* edge fade thickness */
-  --object-position: center center;
-  --fit-mode: contain;         /* IMPORTANT: show full image (no crop) */
-
-  /* Blur background */
-  --bg-image: none;            /* set by JS: url("images/bottom.jpg") */
+.reveal{
+  --sep: 25%;                 /* separator inside CANVAS */
+  --fade-size: 44px;
+  --bg-image: none;
   --bg-blur: 24px;
   --bg-dim: 0.38;
   --bg-sat: 1.10;
-
-  /* Safe margins for handle extremes */
-  --safe-top: calc(env(safe-area-inset-top) + 10px);
-  --safe-bottom: calc(env(safe-area-inset-bottom) + 14px);
 
   position: fixed;
   inset: 0;
@@ -35,123 +19,95 @@ body {
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
-  -webkit-touch-callout: none;
 }
 
-/* Background blur using bottom image */
-.reveal::before {
-  content: "";
-  position: absolute;
-  inset: -50px;
+/* Blur background (uses bottom image) */
+.reveal::before{
+  content:"";
+  position:absolute;
+  inset:-50px;
   background-image: var(--bg-image);
   background-size: cover;
   background-position: center;
   filter: blur(var(--bg-blur)) saturate(var(--bg-sat));
   transform: scale(1.10);
-  opacity: 1;
   z-index: 0;
 }
-
-/* Dim overlay */
-.reveal::after {
-  content: "";
-  position: absolute;
-  inset: 0;
+.reveal::after{
+  content:"";
+  position:absolute;
+  inset:0;
   background: rgba(0,0,0,var(--bg-dim));
   z-index: 1;
 }
 
-/* Subtle vignette to focus content */
-.reveal__veil {
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-  pointer-events: none;
+/* Vignette */
+.reveal__veil{
+  position:absolute;
+  inset:0;
+  z-index:2;
+  pointer-events:none;
   background:
     radial-gradient(1200px 800px at 50% 40%,
       rgba(0,0,0,0.00) 0%,
       rgba(0,0,0,0.18) 55%,
       rgba(0,0,0,0.46) 100%);
-  opacity: .9;
-  transition: opacity 300ms ease;
+  opacity:.92;
 }
 
-/* Frame holds images above background */
-.reveal__frame {
-  position: absolute;
-  inset: 0;
-  overflow: hidden;
-  z-index: 3;
-  opacity: 1;
-  transition: opacity 220ms ease;
-}
-
-/* Images */
-.reveal__img {
-  position: absolute;
-  inset: 0;
+/* CANVAS: JS sets its width/height so it matches the visible contain-rect */
+.reveal__canvas{
+  position:absolute;
+  left:50%;
+  top:50%;
+  transform: translate(-50%, -50%);
   width: 100%;
   height: 100%;
-  object-fit: var(--fit-mode);
-  object-position: var(--object-position);
-  display: block;
-  pointer-events: none;
-  -webkit-user-drag: none;
+  z-index: 5;
+  overflow: visible;
+  border-radius: 14px;
 }
 
-.reveal__img--bottom { z-index: 1; }
-
-.reveal__top-layer {
-  position: absolute;
-  inset: 0;
-  z-index: 3;
+/* Images fill the canvas exactly (no cropping because canvas matches aspect ratio) */
+.reveal__img{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  object-fit: fill; /* canvas already matches aspect ratio */
+  display:block;
+  pointer-events:none;
+  -webkit-user-drag:none;
+  border-radius: 14px;
 }
-
-/* Reveal cut: top image is clipped from top by --sep */
-.reveal__img--top {
+.reveal__img--bottom{ z-index: 1; }
+.reveal__img--top{
+  z-index: 2;
   clip-path: inset(var(--sep) 0 0 0);
   will-change: clip-path;
   transition: clip-path 120ms linear, opacity 160ms ease;
 }
 
-/* Slider UI */
-.reveal__slider {
-  position: absolute;
-  left: 0;
-  right: 0;
+/* Slider inside canvas => aligned to canvas edges, not viewport */
+.reveal__slider{
+  position:absolute;
+  left:0;
+  right:0;
   top: var(--sep);
-  height: 0;
+  height:0;
   z-index: 10;
-  pointer-events: auto;
-  opacity: 1;
-  transition: opacity 220ms ease;
+  pointer-events:auto;
 }
 
-/* Thin line with subtle glow */
-.reveal__line {
-  position: absolute;
-  left: 18px;
-  right: 18px;
-  top: 0;
-  height: 2px;
-  transform: translateY(-50%);
-  background: rgba(255,255,255,0.88);
-  border-radius: 999px;
-  box-shadow:
-    0 0 12px rgba(255,255,255,.28),
-    0 12px 22px rgba(0,0,0,.38);
-  pointer-events: none;
-}
-
-/* Edge fade at the boundary (optional) */
-.reveal__edge-fade {
-  position: absolute;
-  left: 0; right: 0;
-  top: 0;
+/* Edge fade (optional) */
+.reveal__edge-fade{
+  position:absolute;
+  left:0; right:0;
+  top:0;
   height: var(--fade-size);
   transform: translateY(-50%);
-  pointer-events: none;
-  opacity: 0; /* enabled by JS if edgeFade=true */
+  pointer-events:none;
+  opacity: 0; /* enabled by JS */
   background: linear-gradient(
     to bottom,
     rgba(255,255,255,0.00),
@@ -160,113 +116,101 @@ body {
   );
 }
 
-/* PRO handle (slightly bigger) */
-.reveal__handle {
-  position: absolute;
-  left: 50%;
-  top: 0;
+.reveal__line{
+  position:absolute;
+  left: 18px;
+  right: 18px;
+  top:0;
+  height:2px;
+  transform: translateY(-50%);
+  background: rgba(255,255,255,0.88);
+  border-radius:999px;
+  box-shadow: 0 0 12px rgba(255,255,255,.28), 0 12px 22px rgba(0,0,0,.38);
+  pointer-events:none;
+}
+
+/* Pro handle */
+.reveal__handle{
+  position:absolute;
+  left:50%;
+  top:0;
   transform: translate(-50%, -50%);
   width: 54px;
   height: 54px;
-  border-radius: 999px;
+  border-radius:999px;
   border: 1px solid rgba(255,255,255,.18);
   background: rgba(255,255,255,.90);
-  box-shadow:
-    0 18px 44px rgba(0,0,0,0.55),
-    0 0 16px rgba(255,255,255,0.12);
-  display: grid;
-  place-items: center;
+  box-shadow: 0 18px 44px rgba(0,0,0,0.55), 0 0 16px rgba(255,255,255,0.12);
+  display:grid;
+  place-items:center;
   cursor: grab;
-  touch-action: none;
+  touch-action:none;
   transition: transform 160ms ease, background 160ms ease, box-shadow 160ms ease;
   backdrop-filter: blur(7px);
   -webkit-backdrop-filter: blur(7px);
 }
-
-.reveal__handle:active { cursor: grabbing; }
-
-.reveal.is-dragging .reveal__handle {
+.reveal__handle:active{ cursor: grabbing; }
+.reveal.is-dragging .reveal__handle{
   transform: translate(-50%, -50%) scale(1.06);
   background: rgba(255,255,255,.95);
-  box-shadow:
-    0 22px 54px rgba(0,0,0,0.60),
-    0 0 18px rgba(255,255,255,0.16);
+  box-shadow: 0 22px 54px rgba(0,0,0,0.60), 0 0 18px rgba(255,255,255,0.16);
 }
+.reveal__handle svg{ width:22px; height:22px; opacity:.86; }
+.reveal__handle path{ stroke: rgba(0,0,0,.72); }
 
-/* Handle icon */
-.reveal__handle svg { width: 22px; height: 22px; opacity: .86; }
-.reveal__handle path { stroke: rgba(0,0,0,.72); }
-
-/* Haptic-like pulse */
+/* Pulse feedback */
 @keyframes pulse {
-  0%   { transform: translate(-50%, -50%) scale(1.00); }
-  50%  { transform: translate(-50%, -50%) scale(1.10); }
-  100% { transform: translate(-50%, -50%) scale(1.06); }
+  0% { transform: translate(-50%,-50%) scale(1.00); }
+  50%{ transform: translate(-50%,-50%) scale(1.10); }
+  100%{ transform: translate(-50%,-50%) scale(1.06); }
 }
-.reveal__handle.is-pulsing { animation: pulse 220ms ease-in-out 1; }
+.reveal__handle.is-pulsing{ animation: pulse 220ms ease-in-out 1; }
 
-/* Hint (smooth) */
-.reveal__hint {
-  position: absolute;
-  left: 50%;
+/* Hint (dynamic crossfade) */
+.reveal__hint{
+  position:absolute;
+  left:50%;
   top: calc(env(safe-area-inset-top) + 14px);
   transform: translateX(-50%);
-  z-index: 12;
+  z-index: 20;
+  min-width: 220px;
   padding: 8px 12px;
-  border-radius: 999px;
+  border-radius:999px;
   font-size: 14px;
-  letter-spacing: .2px;
+  letter-spacing:.2px;
   color: rgba(255,255,255,0.92);
   background: rgba(0,0,0,0.22);
   border: 1px solid rgba(255,255,255,0.14);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   box-shadow: 0 12px 30px rgba(0,0,0,.35);
-  pointer-events: none;
+  pointer-events:none;
   opacity: 1;
   transition: opacity 260ms ease, transform 260ms ease;
-  white-space: nowrap;
 }
 
-/* Two spans cross-fade */
-.reveal__hint .hint__down,
-.reveal__hint .hint__up {
-  position: absolute;
-  left: 12px;
-  right: 12px;
-  top: 8px;
-  bottom: 8px;
-  display: grid;
-  place-items: center;
+/* Stack spans in the same place for crossfade */
+.reveal__hint span{
+  position:absolute;
+  inset: 8px 12px;
+  display:grid;
+  place-items:center;
   transition: opacity 220ms ease;
 }
+.reveal__hint .hint__down{ opacity: 1; }
+.reveal__hint .hint__up{ opacity: 0; }
 
-.reveal__hint .hint__down { opacity: 1; }
-.reveal__hint .hint__up   { opacity: 0; }
+.reveal__hint.is-up .hint__down{ opacity:0; }
+.reveal__hint.is-up .hint__up{ opacity:1; }
 
-.reveal__hint.is-up .hint__down { opacity: 0; }
-.reveal__hint.is-up .hint__up   { opacity: 1; }
-
-/* Hint subtle mode after interaction */
-.reveal__hint.is-subtle { opacity: .70; }
-
-/* Hide hint fully */
-.reveal__hint.is-hidden {
-  opacity: 0;
+.reveal__hint.is-subtle{ opacity: .70; }
+.reveal__hint.is-hidden{
+  opacity:0;
   transform: translateX(-50%) translateY(-8px);
 }
 
-/* LOADING: hide frame and slider until images loaded */
-.reveal.is-loading .reveal__frame,
-.reveal.is-loading .reveal__slider,
-.reveal.is-loading .reveal__hint {
+/* Loading: hide canvas + slider + hint until both images preloaded */
+.reveal.is-loading .reveal__canvas,
+.reveal.is-loading .reveal__hint{
   opacity: 0;
-}
-
-/* Reduce motion */
-@media (prefers-reduced-motion: reduce) {
-  .reveal__img--top { transition: none; }
-  .reveal__handle { transition: none; }
-  .reveal__hint { transition: none; }
-  .reveal__handle.is-pulsing { animation: none; }
 }
