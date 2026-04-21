@@ -1,86 +1,54 @@
 <!doctype html>
 <html lang="es">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Slow Reveal — Vertical Image Reveal</title>
-  <style>
-    /* Basic reset */
-    *{box-sizing:border-box}
-    html,body{height:100%;margin:0}
-    body{display:flex;align-items:center;justify-content:center;padding:24px;background:linear-gradient(180deg,#071022,#071018);font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,Arial;color:#fff}
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Slow Reveal — Vertical</title>
 
-    /* Component container (mobile-first) */
-    .reveal{--sep:0%;--fade-size:36px;--objectPosition:center center;--maxWidth:720px;width:min(92vw,var(--maxWidth,720px));aspect-ratio:16/10;border-radius:16px;overflow:visible;position:relative;background:#000;touch-action:none;user-select:none;-webkit-user-select:none;box-shadow:0 10px 30px rgba(2,6,23,.6);max-height:calc(100vh - 120px)}
-
-    /* inner frame holds the images and performs the clipping (so handles outside aren't clipped) */
-    .frame{position:absolute;inset:0;border-radius:16px;overflow:hidden}
-
-    /* images fill the clipped frame */
-    .frame img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:var(--objectPosition,center center);display:block}
-    .img-bottom{z-index:1}
-
-    /* top-layer: we control its top via --clipY so the top-image is shown from that Y downwards */
-     /* top-layer remains full-size; the image is clipped to reveal the bottom image beneath.
-       --topVisible is the percentage (0-100) of the top image that remains visible from the top. */
-    .top-layer{position:absolute;left:0;right:0;top:0;bottom:0;overflow:visible;z-index:3}
-    /* clip the top image by the separator variable --sep (0% at top = fully visible) */
-    .top-layer img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:var(--objectPosition,center center);mix-blend-mode:normal;opacity:1;transition:opacity 160ms ease,clip-path 120ms linear;will-change:opacity,clip-path;clip-path:inset(0 0 var(--sep) 0)}
-
-    /* Slider line and handle */
-    .slider{position:absolute;left:0;right:0;top:var(--sep);height:0;z-index:6;pointer-events:auto}
-    .slider::before{content:"";position:absolute;left:0;right:0;top:calc(-1 * var(--fade-size) * 0.33);height:var(--fade-size);background:linear-gradient(180deg,rgba(0,0,0,0.45),rgba(0,0,0,0));pointer-events:none}
-    .slider-line{position:absolute;left:12px;right:12px;top:0;height:2px;background:rgba(255,255,255,0.9);border-radius:2px;box-shadow:0 6px 18px rgba(0,0,0,0.45),0 1px 0 rgba(255,255,255,0.04) inset;transform:translateY(-50%);opacity:.92}
-
-    .handle{position:absolute;left:50%;top:0;transform:translate(-50%,-50%);width:46px;height:46px;border-radius:50%;background:rgba(255,255,255,0.95);display:flex;align-items:center;justify-content:center;box-shadow:0 8px 22px rgba(0,0,0,0.45);transition:transform 120ms ease,box-shadow 120ms ease;pointer-events:auto}
-    .handle:active{transform:translate(-50%,-50%) scale(1.03)}
-    .handle.active{transform:translate(-50%,-50%) scale(1.08);box-shadow:0 12px 32px rgba(0,0,0,0.55)}
-    .handle .icon{width:20px;height:20px;opacity:.85}
-
-    /* indicator removed - separator provides visual cue */
-
-    /* instructional hint */
-    .hint{position:absolute;left:50%;top:12%;transform:translateX(-50%);z-index:6;color:rgba(255,255,255,0.92);font-size:14px;background:rgba(0,0,0,0.18);padding:6px 10px;border-radius:12px;backdrop-filter:blur(4px);transition:opacity 220ms ease,transform 220ms ease;pointer-events:none;white-space:nowrap}
-    .hint.hidden{opacity:0;transform:translateX(-50%) translateY(-8px)}
-
-    /* prevent selection while dragging */
-    .dragging *{user-select:none;-webkit-user-drag:none}
-
-    /* small pulse animation for tactile feedback */
-    @keyframes pulse{0%{transform:translate(-50%,-50%) scale(1)}50%{transform:translate(-50%,-50%) scale(1.06)}100%{transform:translate(-50%,-50%) scale(1)}}
-    .handle.vibrate{animation:pulse 200ms ease}
-
-    @media (min-width:820px){.reveal{aspect-ratio:16/9}}
-    /* Config UI */
-    .config-ui{position:fixed;right:14px;top:14px;z-index:120;display:flex;align-items:flex-start;gap:8px}
-    .config-toggle{width:44px;height:44px;border-radius:10px;border:0;background:rgba(255,255,255,0.06);color:#fff;font-size:18px;backdrop-filter:blur(6px);box-shadow:0 6px 18px rgba(0,0,0,0.4);cursor:pointer}
-    .config-panel{min-width:220px;background:linear-gradient(180deg,rgba(0,0,0,0.55),rgba(0,0,0,0.35));padding:12px;border-radius:12px;color:#fff;font-size:13px;box-shadow:0 10px 30px rgba(2,6,23,0.6)}
-    .config-panel h4{margin:0 0 8px 0;font-size:14px}
-    .config-panel .field{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:8px 0}
-    .config-panel select,input[type=range]{width:100%}
-    .config-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
-    .config-actions button{flex:1;padding:8px;border-radius:8px;border:0;background:rgba(255,255,255,0.08);color:#fff;cursor:pointer}
-  </style>
+  <!-- CSS externo -->
+  <link rel="stylesheet" href="css/reveal.css" />
 </head>
-<body>
-  <div class="reveal" id="reveal" aria-label="Image reveal" role="region">
-    <div class="frame" id="frame">
-      <!-- bottom image (fully visible) - load on demand via data-src to avoid downloading at initial load -->
-      <img class="img-bottom" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==" data-src="images/bottom.jpg" alt="Bottom image placeholder" loading="lazy" style="opacity:0">
 
-      <!-- top-layer: clipped by --sep -->
-      <div class="top-layer" id="topLayer">
-        <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==" data-src="images/top.jpg" alt="Top image placeholder" style="opacity:0">
+<body>
+  <div class="reveal" id="reveal" role="region" aria-label="Comparador de imágenes vertical">
+
+    <!-- Frame: contiene las imágenes (se recortan aquí, NO el handle) -->
+    <div class="reveal__frame" aria-hidden="true">
+      <!-- Bottom image (siempre visible) -->
+      <img
+        id="bottomImg"
+        class="reveal__img reveal__img--bottom"
+        src="images/bottom.jpg"
+        alt="Imagen inferior"
+        draggable="false"
+      />
+
+      <!-- Top layer (recortada por clip-path) -->
+      <div class="reveal__top-layer" id="topLayer" aria-hidden="true">
+        <img
+          id="topImg"
+          class="reveal__img reveal__img--top"
+          src="images/top.jpg"
+          alt="Imagen superior"
+          draggable="false"
+        />
       </div>
     </div>
 
-    <!-- slider+handle (placed outside .frame so it won't be clipped) -->
-    <div class="slider" id="slider" aria-hidden="true">
-      <div class="slider-line" aria-hidden="true"></div>
-      <!-- indicator removed (separator line is the visual cue) -->
-      <button class="handle" id="handle" aria-label="Reveal handle" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100" title="Arrastra">
-        <!-- simple up/down chevrons icon -->
-        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <!-- Slider UI -->
+    <div class="reveal__slider" id="slider" aria-hidden="true">
+      <div class="reveal__edge-fade" id="edgeFade" aria-hidden="true"></div>
+      <div class="reveal__line" aria-hidden="true"></div>
+
+      <button
+        class="reveal__handle"
+        id="handle"
+        type="button"
+        aria-label="Arrastra verticalmente para revelar"
+        title="Arrastra"
+      >
+        <!-- Icono up/down -->
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <path d="M12 6v12"></path>
           <path d="M8 10l4-4 4 4"></path>
           <path d="M8 14l4 4 4-4"></path>
@@ -88,54 +56,11 @@
       </button>
     </div>
 
-    <!-- instructional text -->
-    <div class="hint" id="hint">Desliza hacia abajo ↓</div>
+    <!-- Texto instructivo -->
+    <div class="reveal__hint" id="hint">Desliza hacia abajo ↓</div>
   </div>
 
-  <!-- Config UI -->
-  <div class="config-ui" id="configUI" aria-hidden="false">
-    <button class="config-toggle" id="configToggle" aria-label="Abrir configuración">⚙</button>
-    <div class="config-panel" id="configPanel" hidden>
-      <h4>Configuración</h4>
-      <div class="field"><label>Blend mode</label>
-        <select id="blendSelect">
-          <option value="normal">normal</option>
-          <option value="multiply">multiply</option>
-          <option value="screen">screen</option>
-          <option value="overlay">overlay</option>
-          <option value="darken">darken</option>
-          <option value="lighten">lighten</option>
-        </select>
-      </div>
-      <div class="field"><label>Fit</label>
-        <select id="fitModeSelect">
-          <option value="cover">cover</option>
-          <option value="contain">contain</option>
-        </select>
-      </div>
-      <div class="field"><label>Ciclo</label>
-        <input id="cycleToggle" type="checkbox" aria-label="Activar ciclo de imágenes">
-      </div>
-      <div class="field"><label>Opacidad</label><input id="opacityRange" type="range" min="0" max="1" step="0.01"><span id="opacityVal"></span></div>
-      <div class="field"><label>Fade size</label><input id="fadeRange" type="range" min="0" max="200" step="1"><span id="fadeVal"></span></div>
-      <div class="field"><label>Foco</label>
-        <select id="objectPosSelect" aria-label="Posición de foco">
-          <option value="center center">Centro</option>
-          <option value="center top">Arriba</option>
-          <option value="center bottom">Abajo</option>
-        </select>
-      </div>
-      <div class="field"><label>Initial clip</label><input id="clipRange" type="range" min="0" max="100" step="1"><span id="clipVal"></span></div>
-      <div class="config-actions">
-        <button id="saveBtn">Guardar</button>
-        <button id="resetBtn">Restaurar</button>
-        <button id="downloadBtn">Descargar .json</button>
-        <input type="file" id="loadInput" accept="application/json" style="display:none">
-        <button id="loadBtn">Cargar .json</button>
-      </div>
-    </div>
-  </div>
-
+  <!-- JS -->
   <script src="js/reveal.js"></script>
 </body>
 </html>

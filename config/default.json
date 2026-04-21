@@ -1,16 +1,12 @@
 {
-  "images": [
-    "images/top.jpg",
-    "images/bottom.jpg"
-  ],
-  "startIndex": 0,
-  "cycle": false,
-  "blendMode": "normal",
+  "images": ["images/top.jpg", "images/bottom.jpg"],
+  "fitMode": "contain",
+  "objectPosition": "center center",
   "overlayOpacity": 1,
+  "edgeFade": true,
   "fadeSize": 36,
-  "fitMode": "cover",
-  "objectPosition": "center top",
-  "initialClipPercent": 0,
-  "autoAspect": true,
-  "defaultAspectRatio": "16/10"
+  "initialSepPercent": 25,
+  "bgBlur": 24,
+  "bgDim": 0.35,
+  "bgSat": 1.15
 }
