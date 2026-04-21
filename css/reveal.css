@@ -5,26 +5,32 @@
 html, body { height: 100%; margin: 0; }
 body {
   background: #000;
-  overflow: hidden; /* fullscreen, sin scroll */
+  overflow: hidden;
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
 }
 
-/* Componente fullscreen */
+/* Fullscreen component */
 .reveal {
-  /* Variables configurables */
-  --sep: 25%;                  /* separador desde arriba */
-  --fade-size: 36px;
+  /* Controlled from JS/config */
+  --sep: 25%;                  /* separator from top */
+  --fade-size: 44px;           /* edge fade thickness */
   --object-position: center center;
-  --fit-mode: contain;         /* ✅ no recorta */
-  --bg-image: none;            /* la setea JS con la imagen inferior */
+  --fit-mode: contain;         /* IMPORTANT: show full image (no crop) */
+
+  /* Blur background */
+  --bg-image: none;            /* set by JS: url("images/bottom.jpg") */
   --bg-blur: 24px;
-  --bg-dim: 0.35;              /* oscurecer fondo (0..1) */
-  --bg-sat: 1.15;              /* saturación del blur */
+  --bg-dim: 0.38;
+  --bg-sat: 1.10;
+
+  /* Safe margins for handle extremes */
+  --safe-top: calc(env(safe-area-inset-top) + 10px);
+  --safe-bottom: calc(env(safe-area-inset-bottom) + 14px);
 
   position: fixed;
   inset: 0;
   width: 100vw;
-  height: 100svh;              /* mejor que 100vh en móvil */
+  height: 100svh;
   background: #000;
   touch-action: none;
   user-select: none;
@@ -32,21 +38,21 @@ body {
   -webkit-touch-callout: none;
 }
 
-/* Fondo difuminado (para evitar bandas negras con contain) */
+/* Background blur using bottom image */
 .reveal::before {
   content: "";
   position: absolute;
-  inset: -40px;                /* extra para que el blur no “corte” en bordes */
+  inset: -50px;
   background-image: var(--bg-image);
   background-size: cover;
   background-position: center;
   filter: blur(var(--bg-blur)) saturate(var(--bg-sat));
-  transform: scale(1.08);      /* evita bordes transparentes por blur */
+  transform: scale(1.10);
   opacity: 1;
   z-index: 0;
 }
 
-/* Capa oscura encima del blur para legibilidad */
+/* Dim overlay */
 .reveal::after {
   content: "";
   position: absolute;
@@ -55,15 +61,32 @@ body {
   z-index: 1;
 }
 
-/* Frame por encima del fondo */
+/* Subtle vignette to focus content */
+.reveal__veil {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background:
+    radial-gradient(1200px 800px at 50% 40%,
+      rgba(0,0,0,0.00) 0%,
+      rgba(0,0,0,0.18) 55%,
+      rgba(0,0,0,0.46) 100%);
+  opacity: .9;
+  transition: opacity 300ms ease;
+}
+
+/* Frame holds images above background */
 .reveal__frame {
   position: absolute;
   inset: 0;
   overflow: hidden;
-  z-index: 2;
+  z-index: 3;
+  opacity: 1;
+  transition: opacity 220ms ease;
 }
 
-/* Imágenes */
+/* Images */
 .reveal__img {
   position: absolute;
   inset: 0;
@@ -78,21 +101,20 @@ body {
 
 .reveal__img--bottom { z-index: 1; }
 
-/* Capa superior recortada */
 .reveal__top-layer {
   position: absolute;
   inset: 0;
   z-index: 3;
 }
 
-/* ✅ Clip correcto: recorta por arriba con --sep */
+/* Reveal cut: top image is clipped from top by --sep */
 .reveal__img--top {
   clip-path: inset(var(--sep) 0 0 0);
   will-change: clip-path;
   transition: clip-path 120ms linear, opacity 160ms ease;
 }
 
-/* Slider */
+/* Slider UI */
 .reveal__slider {
   position: absolute;
   left: 0;
@@ -101,25 +123,27 @@ body {
   height: 0;
   z-index: 10;
   pointer-events: auto;
+  opacity: 1;
+  transition: opacity 220ms ease;
 }
 
-/* Línea */
+/* Thin line with subtle glow */
 .reveal__line {
   position: absolute;
-  left: 16px;                  /* margen cómodo */
-  right: 16px;
+  left: 18px;
+  right: 18px;
   top: 0;
   height: 2px;
   transform: translateY(-50%);
-  background: rgba(255,255,255,0.92);
+  background: rgba(255,255,255,0.88);
   border-radius: 999px;
   box-shadow:
-    0 0 12px rgba(255,255,255,.35),
-    0 10px 20px rgba(0,0,0,.35);
+    0 0 12px rgba(255,255,255,.28),
+    0 12px 22px rgba(0,0,0,.38);
   pointer-events: none;
 }
 
-/* Edge fade opcional */
+/* Edge fade at the boundary (optional) */
 .reveal__edge-fade {
   position: absolute;
   left: 0; right: 0;
@@ -127,34 +151,36 @@ body {
   height: var(--fade-size);
   transform: translateY(-50%);
   pointer-events: none;
-  opacity: 0; /* JS lo activa si edgeFade=true */
+  opacity: 0; /* enabled by JS if edgeFade=true */
   background: linear-gradient(
     to bottom,
     rgba(255,255,255,0.00),
-    rgba(255,255,255,0.16),
+    rgba(255,255,255,0.14),
     rgba(255,255,255,0.00)
   );
 }
 
-/* Handle */
+/* PRO handle (slightly bigger) */
 .reveal__handle {
   position: absolute;
   left: 50%;
   top: 0;
   transform: translate(-50%, -50%);
-  width: 48px;
-  height: 48px;
+  width: 54px;
+  height: 54px;
   border-radius: 999px;
   border: 1px solid rgba(255,255,255,.18);
   background: rgba(255,255,255,.90);
-  box-shadow: 0 14px 34px rgba(0,0,0,0.55);
+  box-shadow:
+    0 18px 44px rgba(0,0,0,0.55),
+    0 0 16px rgba(255,255,255,0.12);
   display: grid;
   place-items: center;
   cursor: grab;
   touch-action: none;
   transition: transform 160ms ease, background 160ms ease, box-shadow 160ms ease;
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(7px);
+  -webkit-backdrop-filter: blur(7px);
 }
 
 .reveal__handle:active { cursor: grabbing; }
@@ -162,14 +188,16 @@ body {
 .reveal.is-dragging .reveal__handle {
   transform: translate(-50%, -50%) scale(1.06);
   background: rgba(255,255,255,.95);
-  box-shadow: 0 18px 44px rgba(0,0,0,0.60);
+  box-shadow:
+    0 22px 54px rgba(0,0,0,0.60),
+    0 0 18px rgba(255,255,255,0.16);
 }
 
-/* Icono */
-.reveal__handle svg { width: 20px; height: 20px; opacity: .86; }
-.reveal__handle path { stroke: rgba(0,0,0,.70); }
+/* Handle icon */
+.reveal__handle svg { width: 22px; height: 22px; opacity: .86; }
+.reveal__handle path { stroke: rgba(0,0,0,.72); }
 
-/* “haptic-like” */
+/* Haptic-like pulse */
 @keyframes pulse {
   0%   { transform: translate(-50%, -50%) scale(1.00); }
   50%  { transform: translate(-50%, -50%) scale(1.10); }
@@ -177,31 +205,62 @@ body {
 }
 .reveal__handle.is-pulsing { animation: pulse 220ms ease-in-out 1; }
 
-/* Hint */
+/* Hint (smooth) */
 .reveal__hint {
   position: absolute;
   left: 50%;
   top: calc(env(safe-area-inset-top) + 14px);
   transform: translateX(-50%);
   z-index: 12;
-  padding: 8px 10px;
+  padding: 8px 12px;
   border-radius: 999px;
   font-size: 14px;
   letter-spacing: .2px;
-  color: rgba(255,255,255,0.90);
+  color: rgba(255,255,255,0.92);
   background: rgba(0,0,0,0.22);
   border: 1px solid rgba(255,255,255,0.14);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-  box-shadow: 0 10px 28px rgba(0,0,0,.35);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: 0 12px 30px rgba(0,0,0,.35);
   pointer-events: none;
+  opacity: 1;
   transition: opacity 260ms ease, transform 260ms ease;
   white-space: nowrap;
 }
 
+/* Two spans cross-fade */
+.reveal__hint .hint__down,
+.reveal__hint .hint__up {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  top: 8px;
+  bottom: 8px;
+  display: grid;
+  place-items: center;
+  transition: opacity 220ms ease;
+}
+
+.reveal__hint .hint__down { opacity: 1; }
+.reveal__hint .hint__up   { opacity: 0; }
+
+.reveal__hint.is-up .hint__down { opacity: 0; }
+.reveal__hint.is-up .hint__up   { opacity: 1; }
+
+/* Hint subtle mode after interaction */
+.reveal__hint.is-subtle { opacity: .70; }
+
+/* Hide hint fully */
 .reveal__hint.is-hidden {
   opacity: 0;
   transform: translateX(-50%) translateY(-8px);
+}
+
+/* LOADING: hide frame and slider until images loaded */
+.reveal.is-loading .reveal__frame,
+.reveal.is-loading .reveal__slider,
+.reveal.is-loading .reveal__hint {
+  opacity: 0;
 }
 
 /* Reduce motion */

@@ -3,10 +3,20 @@
   "fitMode": "contain",
   "objectPosition": "center center",
   "overlayOpacity": 1,
+
   "edgeFade": true,
-  "fadeSize": 36,
+  "fadeSize": 44,
+
   "initialSepPercent": 25,
+
+  "clampMinPercent": 4,
+  "clampMaxPercent": 96,
+
   "bgBlur": 24,
-  "bgDim": 0.35,
-  "bgSat": 1.15
+  "bgDim": 0.38,
+  "bgSat": 1.10,
+
+  "hintDownThreshold": 55,
+  "hintUpThreshold": 45,
+  "hintAutoHideMs": 2600
 }
