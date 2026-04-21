@@ -8,8 +8,8 @@
   "blendMode": "normal",
   "overlayOpacity": 1,
   "fadeSize": 36,
-  "fitMode": "contain",
-  "objectPosition": "center bottom",
+  "fitMode": "cover",
+  "objectPosition": "center top",
   "initialClipPercent": 0,
   "autoAspect": true,
   "defaultAspectRatio": "16/10"

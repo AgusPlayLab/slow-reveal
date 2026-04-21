@@ -24,7 +24,8 @@
   defaultConfig.overlayOpacity = 1;
   defaultConfig.fadeSize = 36;
   defaultConfig.objectPosition = 'center center';
-  defaultConfig.fitMode = 'contain';
+  defaultConfig.objectPosition = 'center top';
+  defaultConfig.fitMode = 'cover';
   defaultConfig.cycle = false;
 
   let config = Object.assign({}, defaultConfig);
@@ -130,7 +131,6 @@
   let targetClip = clipPercent;
   let lastY = 0; let lastTime = 0; let velocity = 0;
   let _savedObjectPosition = null;
-  let _revealDir = null;
 
   // image sequence state
   let imagesList = [];
@@ -167,6 +167,7 @@
 
   function applyClip(p){
     clipPercent = clamp(p, 0, 100);
+    // expose slider position for CSS and UI
     container.style.setProperty('--sep', clipPercent + '%');
     handle.setAttribute('aria-valuenow', Math.round(100 - clipPercent));
   }
@@ -174,9 +175,16 @@
   function scheduleRender(){ if(rafId==null) rafId = requestAnimationFrame(render); }
   function render(){
     rafId = null;
-    clipPercent += (targetClip - clipPercent) * 0.22;
+    if(isDragging){
+      // while dragging, follow pointer exactly for immediate response
+      clipPercent = targetClip;
+    } else {
+      // smooth easing when not actively dragging
+      clipPercent += (targetClip - clipPercent) * 0.22;
+    }
     applyClip(clipPercent);
-    if(isDragging) scheduleRender();
+    // continue rendering while dragging or while easing still moving
+    if(isDragging || Math.abs(targetClip - clipPercent) > 0.05) scheduleRender();
   }
 
   function clientYToPercent(clientY){ const y = clientY - containerRect.top; return clamp((y / containerHeight) * 100, 0, 100); }
@@ -187,10 +195,10 @@
     lastY = e.clientY; lastTime = performance.now(); velocity = 0; hint.classList.add('hidden');
     try{ container.scrollIntoView({behavior:'smooth', block:'center'}); }catch(e){}
     try{ (e.target||handle).setPointerCapture && (e.target||handle).setPointerCapture(e.pointerId) }catch(err){}
+    // disable clip-path transition while dragging for immediate response
+    try{ topImg.style.transition = 'opacity 160ms ease'; }catch(e){}
     // don't set bottomImg.src synchronously here — preloads are handled in applyConfig
-    // save current objectPosition so we can restore it when interaction ends
-    try{ _savedObjectPosition = getComputedStyle(container).getPropertyValue('--objectPosition') || (config.objectPosition || defaultConfig.objectPosition || 'center center'); }catch(e){}
-    _revealDir = null;
+    // no objectPosition changes; nothing to save
     targetClip = clientYToPercent(e.clientY); scheduleRender();
     window.addEventListener('pointermove', onPointerMove, {passive:false});
     window.addEventListener('pointerup', onPointerUp, {passive:false});
@@ -203,12 +211,7 @@
     const dy = y - lastY;
     velocity = dy / dt; lastY = y; lastTime = now;
 
-    // decide reveal direction by movement (use dy sign to be responsive even at low speed)
-    let moveDir = null;
-    const dyThreshold = 1; // px
-    if(dy > dyThreshold) moveDir = 'down';
-    else if(dy < -dyThreshold) moveDir = 'up';
-    if(moveDir && moveDir !== _revealDir){ _revealDir = moveDir; try{ container.style.setProperty('--objectPosition', moveDir === 'down' ? 'center top' : 'center bottom'); }catch(e){} }
+    // (no dynamic objectPosition changes) keep focus configured in CSS/config
 
     let raw = ((y - containerRect.top) / containerHeight) * 100;
     if(imagesList.length > 1 && config.cycle){
@@ -228,8 +231,9 @@
     try{ (e.target||handle).releasePointerCapture && (e.target||handle).releasePointerCapture(e.pointerId) }catch(err){}
     window.removeEventListener('pointermove', onPointerMove); window.removeEventListener('pointerup', onPointerUp);
     applyClip(targetClip);
-    // restore configured objectPosition after interaction
-    try{ container.style.setProperty('--objectPosition', _savedObjectPosition || (config.objectPosition || defaultConfig.objectPosition || 'center center')); }catch(e){}
+    // nothing to restore for objectPosition (we keep it static)
+    // restore clip-path transition so future programmatic easing looks smooth
+    try{ topImg.style.transition = 'opacity 220ms ease, clip-path 120ms linear'; }catch(e){}
     const speedThreshold = 0.15;
     if(Math.abs(velocity) > speedThreshold){
       let projectedPx = velocity * 180; let projectedPercent = (projectedPx / containerHeight) * 100;
@@ -271,7 +275,7 @@
     container.style.setProperty('--fade-size', (config.fadeSize || 36) + 'px');
     topImg.style.objectFit = config.fitMode || defaultConfig.fitMode || 'cover';
     bottomImg.style.objectFit = config.fitMode || defaultConfig.fitMode || 'cover';
-    container.style.setProperty('--objectPosition', config.objectPosition || defaultConfig.objectPosition || 'center center');
+    container.style.setProperty('--objectPosition', config.objectPosition || defaultConfig.objectPosition || 'center top');
     clipPercent = clamp(config.initialClipPercent ?? clipPercent, 0, 100);
     targetClip = clipPercent;
     // NOTE: avoid changing container aspect-ratio dynamically to prevent layout jumps while images load
@@ -347,7 +351,7 @@
       opacityRange.value = (typeof cfg.overlayOpacity === 'number') ? cfg.overlayOpacity : 1; opacityVal.textContent = opacityRange.value;
       fadeRange.value = cfg.fadeSize || 36; fadeVal.textContent = fadeRange.value + 'px';
       fitModeSelect.value = cfg.fitMode || defaultConfig.fitMode || 'cover';
-      objectPosSelect.value = cfg.objectPosition || defaultConfig.objectPosition || 'center bottom';
+      objectPosSelect.value = cfg.objectPosition || defaultConfig.objectPosition || 'center top';
           cycleToggle.checked = !!cfg.cycle;
       clipRange.value = (typeof cfg.initialClipPercent === 'number') ? cfg.initialClipPercent : defaultConfig.initialClipPercent; clipVal.textContent = clipRange.value + '%';
     }
