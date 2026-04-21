@@ -1,0 +1,16 @@
+{
+  "images": [
+    "images/top.jpg",
+    "images/bottom.jpg"
+  ],
+  "startIndex": 0,
+  "cycle": false,
+  "blendMode": "normal",
+  "overlayOpacity": 1,
+  "fadeSize": 36,
+  "fitMode": "contain",
+  "objectPosition": "center bottom",
+  "initialClipPercent": 0,
+  "autoAspect": true,
+  "defaultAspectRatio": "16/10"
+}

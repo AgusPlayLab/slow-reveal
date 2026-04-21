@@ -11,7 +11,7 @@
     body{display:flex;align-items:center;justify-content:center;padding:24px;background:linear-gradient(180deg,#071022,#071018);font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,Arial;color:#fff}
 
     /* Component container (mobile-first) */
-    .reveal{--sep:0%;--fade-size:36px;--objectPosition:center bottom;--maxWidth:720px;width:min(92vw,var(--maxWidth,720px));aspect-ratio:16/10;border-radius:16px;overflow:visible;position:relative;background:#000;touch-action:none;user-select:none;-webkit-user-select:none;box-shadow:0 10px 30px rgba(2,6,23,.6);max-height:calc(100vh - 120px)}
+    .reveal{--sep:0%;--fade-size:36px;--objectPosition:center center;--maxWidth:720px;width:min(92vw,var(--maxWidth,720px));aspect-ratio:16/10;border-radius:16px;overflow:visible;position:relative;background:#000;touch-action:none;user-select:none;-webkit-user-select:none;box-shadow:0 10px 30px rgba(2,6,23,.6);max-height:calc(100vh - 120px)}
 
     /* inner frame holds the images and performs the clipping (so handles outside aren't clipped) */
     .frame{position:absolute;inset:0;border-radius:16px;overflow:hidden}
@@ -65,12 +65,12 @@
 <body>
   <div class="reveal" id="reveal" aria-label="Image reveal" role="region">
     <div class="frame" id="frame">
-      <!-- bottom image (fully visible) -->
-      <img class="img-bottom" src="images/bottom.svg" alt="Bottom image placeholder">
+      <!-- bottom image (fully visible) - load on demand via data-src to avoid downloading at initial load -->
+      <img class="img-bottom" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==" data-src="images/bottom.jpg" alt="Bottom image placeholder" loading="lazy" style="opacity:0">
 
       <!-- top-layer: clipped by --sep -->
       <div class="top-layer" id="topLayer">
-        <img src="images/top.svg" alt="Top image placeholder">
+        <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==" data-src="images/top.jpg" alt="Top image placeholder" style="opacity:0">
       </div>
     </div>
 
@@ -113,6 +113,9 @@
           <option value="contain">contain</option>
         </select>
       </div>
+      <div class="field"><label>Ciclo</label>
+        <input id="cycleToggle" type="checkbox" aria-label="Activar ciclo de imágenes">
+      </div>
       <div class="field"><label>Opacidad</label><input id="opacityRange" type="range" min="0" max="1" step="0.01"><span id="opacityVal"></span></div>
       <div class="field"><label>Fade size</label><input id="fadeRange" type="range" min="0" max="200" step="1"><span id="fadeVal"></span></div>
       <div class="field"><label>Foco</label>
@@ -133,238 +136,6 @@
     </div>
   </div>
 
-  <script>
-    /*
-      Vertical reveal component with optional config support.
-      - Loads `config.json` if present.
-      - Auto-detects image aspect and adjusts container.
-      - Keeps backward compatibility with current markup.
-    */
-    (function(){
-      const container = document.getElementById('reveal');
-      const topLayer = document.getElementById('topLayer');
-      const topImg = topLayer.querySelector('img');
-      const bottomImg = container.querySelector('.img-bottom');
-      const slider = document.getElementById('slider');
-      const handle = document.getElementById('handle');
-      const hint = document.getElementById('hint');
-
-      const defaultConfig = {
-        topImage: topImg.src || 'images/top.svg',
-        bottomImage: bottomImg.src || 'images/bottom.svg',
-        // initialClipPercent: separator position from top (0 = top image fully visible)
-        initialClipPercent: 0,
-        autoAspect: true,
-        defaultAspectRatio: '16/10',
-        orientation: 'vertical'
-      };
-        // sensible UI defaults for overlay behavior
-        defaultConfig.blendMode = 'normal';
-        defaultConfig.overlayOpacity = 1;
-        defaultConfig.fadeSize = 36;
-        defaultConfig.objectPosition = 'center bottom';
-        defaultConfig.fitMode = 'cover';
-
-      let config = Object.assign({}, defaultConfig);
-
-      async function loadConfig(){
-        try {
-          const res = await fetch('config.json', {cache:'no-cache'});
-          if(res.ok){
-            const json = await res.json();
-            config = Object.assign({}, defaultConfig, json);
-          }
-        } catch(err){ /* ignore — use defaults */ }
-      }
-
-      function clamp(n,a,b){ return Math.max(a, Math.min(b, Number(n) || 0)); }
-
-      function ensureImageLoaded(img){
-        return new Promise(resolve=>{
-          if(img.complete && img.naturalWidth){ resolve(); }
-          else {
-            img.addEventListener('load', function onLoad(){ img.removeEventListener('load', onLoad); resolve(); });
-            img.addEventListener('error', function onError(){ img.removeEventListener('error', onError); resolve(); });
-          }
-        });
-      }
-
-      // Core state
-      let containerRect = null;
-      let containerHeight = 0;
-      let isDragging = false;
-      let rafId = null;
-      let clipPercent = defaultConfig.initialClipPercent;
-      let targetClip = clipPercent;
-      let lastY = 0; let lastTime = 0; let velocity = 0;
-
-      function updateRect(){ containerRect = container.getBoundingClientRect(); containerHeight = containerRect.height || 1; }
-
-      function applyClip(p){
-        // clipPercent now represents the separator position (0..100) measured from the top
-        // (0% = separator at top → top image fully visible; 100% = separator at bottom → top image hidden)
-        clipPercent = clamp(p, 0, 100);
-        // set CSS variable --sep used for clip-path and slider position
-        container.style.setProperty('--sep', clipPercent + '%');
-        // update accessible value as percentage of TOP image visible
-        handle.setAttribute('aria-valuenow', Math.round(100 - clipPercent));
-      }
-
-      function scheduleRender(){ if(rafId==null) rafId = requestAnimationFrame(render); }
-      function render(){
-        rafId = null;
-        clipPercent += (targetClip - clipPercent) * 0.22;
-        applyClip(clipPercent);
-        if(isDragging) scheduleRender();
-      }
-
-      function clientYToPercent(clientY){ const y = clientY - containerRect.top; return clamp((y / containerHeight) * 100, 0, 100); }
-
-      function onPointerDown(e){
-        if(e.type === 'pointerdown' && e.button && e.button !== 0) return;
-        e.preventDefault(); updateRect(); isDragging = true; container.classList.add('dragging'); handle.classList.add('active','vibrate');
-        lastY = e.clientY; lastTime = performance.now(); velocity = 0; hint.classList.add('hidden');
-        // separator provides the visual cue; no indicator to hide
-        // ensure the frame/handle stays visible (scroll into view on mobile/desktop)
-        try{ container.scrollIntoView({behavior:'smooth', block:'center'}); }catch(e){}
-        try{ (e.target||handle).setPointerCapture && (e.target||handle).setPointerCapture(e.pointerId) }catch(err){}
-        targetClip = clientYToPercent(e.clientY); scheduleRender();
-        window.addEventListener('pointermove', onPointerMove, {passive:false});
-        window.addEventListener('pointerup', onPointerUp, {passive:false});
-        setTimeout(()=>handle.classList.remove('vibrate'),220);
-      }
-
-      function onPointerMove(e){ if(!isDragging) return; e.preventDefault(); updateRect(); const now = performance.now(); const y = e.clientY; const dt = Math.max(1, now - lastTime); velocity = (y - lastY) / dt; lastY = y; lastTime = now; targetClip = clientYToPercent(y); scheduleRender(); }
-
-      function onPointerUp(e){
-        if(!isDragging) return; isDragging = false; container.classList.remove('dragging'); handle.classList.remove('active');
-        try{ (e.target||handle).releasePointerCapture && (e.target||handle).releasePointerCapture(e.pointerId) }catch(err){}
-        window.removeEventListener('pointermove', onPointerMove); window.removeEventListener('pointerup', onPointerUp);
-        applyClip(targetClip);
-        const speedThreshold = 0.15;
-        if(Math.abs(velocity) > speedThreshold){
-          let projectedPx = velocity * 180; let projectedPercent = (projectedPx / containerHeight) * 100;
-          let final = clamp(targetClip + projectedPercent, 0, 100); let start = null; const startVal = clipPercent; const dur = 420;
-          function inertiaStep(ts){ if(!start) start = ts; const t = Math.min(1, (ts-start)/dur); const eased = 1 - Math.pow(1 - t, 3); const cur = startVal + (final - startVal) * eased; applyClip(cur); if(t<1) requestAnimationFrame(inertiaStep); }
-          requestAnimationFrame(inertiaStep);
-        }
-      }
-
-      function onContainerClick(e){ if(isDragging) return; updateRect(); targetClip = clientYToPercent(e.clientY); applyClip(targetClip); }
-
-      function onHandleKey(e){ const step = 4; if(e.key==='ArrowDown'||e.key==='PageDown'){ targetClip = clamp(targetClip + step, 0, 100); applyClip(targetClip); e.preventDefault(); } else if(e.key==='ArrowUp'||e.key==='PageUp'){ targetClip = clamp(targetClip - step, 0, 100); applyClip(targetClip); e.preventDefault(); } }
-
-      async function applyConfig(){
-        if(config.bottomImage) bottomImg.src = config.bottomImage;
-        if(config.topImage) topImg.src = config.topImage;
-        // overlay settings (blend mode + opacity) and edge fade size
-        try{ topImg.style.mixBlendMode = config.blendMode || 'normal'; }catch(e){}
-        topImg.style.opacity = (typeof config.overlayOpacity === 'number') ? config.overlayOpacity : 1;
-        container.style.setProperty('--fade-size', (config.fadeSize || 36) + 'px');
-        // fit mode (object-fit) for images: 'cover' (default) or 'contain'
-        topImg.style.objectFit = config.fitMode || defaultConfig.fitMode || 'cover';
-        bottomImg.style.objectFit = config.fitMode || defaultConfig.fitMode || 'cover';
-        // object-position (focal point) for images
-        container.style.setProperty('--objectPosition', config.objectPosition || defaultConfig.objectPosition || 'center bottom');
-        // initialClipPercent represents the separator position from the top (0 = top image fully visible)
-        clipPercent = clamp(config.initialClipPercent ?? clipPercent, 0, 100);
-        targetClip = clipPercent;
-        // auto detect aspect ratio if possible
-        if(config.autoAspect && config.topImage){
-          await ensureImageLoaded(topImg);
-          const w = topImg.naturalWidth || topImg.width; const h = topImg.naturalHeight || topImg.height;
-          if(w && h) {
-            container.style.aspectRatio = `${w}/${h}`;
-            // if portrait (tall) image, make frame narrower so image appears taller on mobile/desktop
-            const ratio = w / h;
-            if(ratio < 0.95) container.style.setProperty('--maxWidth', '420px');
-            else container.style.setProperty('--maxWidth', '720px');
-          }
-          else if(config.defaultAspectRatio) container.style.aspectRatio = config.defaultAspectRatio;
-        } else if(config.defaultAspectRatio){
-          container.style.aspectRatio = config.defaultAspectRatio;
-        }
-        updateRect(); applyClip(clipPercent);
-        // indicator removed; nothing to toggle
-      }
-
-      async function init(){ await loadConfig(); await applyConfig(); handle.addEventListener('pointerdown', onPointerDown, {passive:false}); slider.addEventListener('pointerdown', onPointerDown, {passive:false}); container.addEventListener('click', onContainerClick); handle.addEventListener('keydown', onHandleKey); window.addEventListener('resize', updateRect); container.style.touchAction = 'none'; }
-      init();
-
-      window.__slowReveal = { setPercent(p){ targetClip = clamp(p,0,100); applyClip(targetClip); }, getPercent(){ return clipPercent }, updateConfig(c){ config = Object.assign({}, config, c); applyConfig(); } };
-
-      // --- Configuration UI logic (local controls, save/load) ---
-      (function(){
-        const savedKey = 'slowReveal.config';
-        const cfgToggle = document.getElementById('configToggle');
-        const cfgPanel = document.getElementById('configPanel');
-        const blendSelect = document.getElementById('blendSelect');
-        const opacityRange = document.getElementById('opacityRange');
-        const opacityVal = document.getElementById('opacityVal');
-        const fadeRange = document.getElementById('fadeRange');
-        const fadeVal = document.getElementById('fadeVal');
-        const fitModeSelect = document.getElementById('fitModeSelect');
-        const objectPosSelect = document.getElementById('objectPosSelect');
-        const clipRange = document.getElementById('clipRange');
-        const clipVal = document.getElementById('clipVal');
-        const saveBtn = document.getElementById('saveBtn');
-        const resetBtn = document.getElementById('resetBtn');
-        const downloadBtn = document.getElementById('downloadBtn');
-        const loadBtn = document.getElementById('loadBtn');
-        const loadInput = document.getElementById('loadInput');
-
-        function showPanel(show){ if(show){ cfgPanel.hidden = false; cfgToggle.setAttribute('aria-pressed','true'); } else { cfgPanel.hidden = true; cfgToggle.removeAttribute('aria-pressed'); } }
-
-        function readSaved(){ try{ const txt = localStorage.getItem(savedKey); return txt ? JSON.parse(txt) : null; }catch(e){return null} }
-        function writeSaved(obj){ try{ localStorage.setItem(savedKey, JSON.stringify(obj)); }catch(e){}
-        }
-
-        function updateUIFromConfig(cfg){
-          blendSelect.value = cfg.blendMode || 'normal';
-          opacityRange.value = (typeof cfg.overlayOpacity === 'number') ? cfg.overlayOpacity : 1; opacityVal.textContent = opacityRange.value;
-          fadeRange.value = cfg.fadeSize || 36; fadeVal.textContent = fadeRange.value + 'px';
-          fitModeSelect.value = cfg.fitMode || defaultConfig.fitMode || 'cover';
-          objectPosSelect.value = cfg.objectPosition || defaultConfig.objectPosition || 'center bottom';
-          clipRange.value = (typeof cfg.initialClipPercent === 'number') ? cfg.initialClipPercent : defaultConfig.initialClipPercent; clipVal.textContent = clipRange.value + '%';
-        }
-
-        function currentConfigFromUI(){
-          return {
-            blendMode: blendSelect.value,
-            overlayOpacity: Number(opacityRange.value),
-            fadeSize: Number(fadeRange.value),
-            fitMode: fitModeSelect.value,
-            objectPosition: objectPosSelect.value,
-            initialClipPercent: Number(clipRange.value)
-          };
-        }
-
-        // wire events
-        cfgToggle.addEventListener('click', ()=> showPanel(!cfgPanel.hidden));
-        blendSelect.addEventListener('change', ()=>{ const c = currentConfigFromUI(); window.__slowReveal.updateConfig(c); writeSaved(Object.assign({}, config, c)); });
-        opacityRange.addEventListener('input', ()=>{ opacityVal.textContent = opacityRange.value; window.__slowReveal.updateConfig({overlayOpacity:Number(opacityRange.value)}); });
-        fadeRange.addEventListener('input', ()=>{ fadeVal.textContent = fadeRange.value + 'px'; window.__slowReveal.updateConfig({fadeSize:Number(fadeRange.value)}); });
-        clipRange.addEventListener('input', ()=>{ clipVal.textContent = clipRange.value + '%'; window.__slowReveal.setPercent(Number(clipRange.value)); });
-        fitModeSelect.addEventListener('change', ()=>{ window.__slowReveal.updateConfig({fitMode: fitModeSelect.value}); writeSaved(Object.assign({}, config, currentConfigFromUI())); });
-        objectPosSelect.addEventListener('change', ()=>{ window.__slowReveal.updateConfig({objectPosition: objectPosSelect.value}); writeSaved(Object.assign({}, config, currentConfigFromUI())); });
-        objectPosSelect.addEventListener('change', ()=>{ window.__slowReveal.updateConfig({objectPosition: objectPosSelect.value}); writeSaved(Object.assign({}, config, currentConfigFromUI())); });
-
-        saveBtn.addEventListener('click', ()=>{ const cur = currentConfigFromUI(); writeSaved(cur); alert('Configuración guardada localmente'); });
-        resetBtn.addEventListener('click', ()=>{ updateUIFromConfig(defaultConfig); window.__slowReveal.updateConfig(defaultConfig); writeSaved(defaultConfig); });
-        downloadBtn.addEventListener('click', ()=>{ const payload = Object.assign({}, config, currentConfigFromUI()); const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'slow-reveal.config.json'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); });
-        loadBtn.addEventListener('click', ()=> loadInput.click());
-        loadInput.addEventListener('change', (ev)=>{
-          const f = ev.target.files && ev.target.files[0]; if(!f) return; const r = new FileReader(); r.onload = ()=>{ try{ const parsed = JSON.parse(r.result); window.__slowReveal.updateConfig(parsed); updateUIFromConfig(parsed); writeSaved(parsed); alert('Configuración cargada'); }catch(e){ alert('Archivo inválido'); } }; r.readAsText(f);
-        });
-
-        // initialize UI from saved config or from current config
-        (function initUI(){
-          const saved = readSaved();
-          const base = Object.assign({}, config, saved || {});
-          updateUIFromConfig(base);
-        })();
-      })();
-    })();
-  </script>
+  <script src="js/reveal.js"></script>
 </body>
 </html>

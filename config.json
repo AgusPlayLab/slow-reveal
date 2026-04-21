@@ -1,6 +1,4 @@
 {
-  "topImage": "images/top.jpg",
-  "bottomImage": "images/bottom.jpg",
   "initialClipPercent": 0,
   "autoAspect": true,
   "defaultAspectRatio": "16/10",
