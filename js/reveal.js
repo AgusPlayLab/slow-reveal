@@ -129,6 +129,8 @@
   let clipPercent = defaultConfig.initialClipPercent;
   let targetClip = clipPercent;
   let lastY = 0; let lastTime = 0; let velocity = 0;
+  let _savedObjectPosition = null;
+  let _revealDir = null;
 
   // image sequence state
   let imagesList = [];
@@ -186,6 +188,9 @@
     try{ container.scrollIntoView({behavior:'smooth', block:'center'}); }catch(e){}
     try{ (e.target||handle).setPointerCapture && (e.target||handle).setPointerCapture(e.pointerId) }catch(err){}
     // don't set bottomImg.src synchronously here — preloads are handled in applyConfig
+    // save current objectPosition so we can restore it when interaction ends
+    try{ _savedObjectPosition = getComputedStyle(container).getPropertyValue('--objectPosition') || (config.objectPosition || defaultConfig.objectPosition || 'center center'); }catch(e){}
+    _revealDir = null;
     targetClip = clientYToPercent(e.clientY); scheduleRender();
     window.addEventListener('pointermove', onPointerMove, {passive:false});
     window.addEventListener('pointerup', onPointerUp, {passive:false});
@@ -195,7 +200,15 @@
   function onPointerMove(e){
     if(!isDragging) return; e.preventDefault(); updateRect();
     const now = performance.now(); const y = e.clientY; const dt = Math.max(1, now - lastTime);
-    velocity = (y - lastY) / dt; lastY = y; lastTime = now;
+    const dy = y - lastY;
+    velocity = dy / dt; lastY = y; lastTime = now;
+
+    // decide reveal direction by movement (use dy sign to be responsive even at low speed)
+    let moveDir = null;
+    const dyThreshold = 1; // px
+    if(dy > dyThreshold) moveDir = 'down';
+    else if(dy < -dyThreshold) moveDir = 'up';
+    if(moveDir && moveDir !== _revealDir){ _revealDir = moveDir; try{ container.style.setProperty('--objectPosition', moveDir === 'down' ? 'center top' : 'center bottom'); }catch(e){} }
 
     let raw = ((y - containerRect.top) / containerHeight) * 100;
     if(imagesList.length > 1 && config.cycle){
@@ -215,6 +228,8 @@
     try{ (e.target||handle).releasePointerCapture && (e.target||handle).releasePointerCapture(e.pointerId) }catch(err){}
     window.removeEventListener('pointermove', onPointerMove); window.removeEventListener('pointerup', onPointerUp);
     applyClip(targetClip);
+    // restore configured objectPosition after interaction
+    try{ container.style.setProperty('--objectPosition', _savedObjectPosition || (config.objectPosition || defaultConfig.objectPosition || 'center center')); }catch(e){}
     const speedThreshold = 0.15;
     if(Math.abs(velocity) > speedThreshold){
       let projectedPx = velocity * 180; let projectedPercent = (projectedPx / containerHeight) * 100;
