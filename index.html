@@ -3,9 +3,37 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+
   <title>Slow Reveal — Vertical</title>
+  
+  <!-- SEO básico -->
+  <meta name="description" content="Empieza arriba… y desliza despacio. Hay algo esperándote más abajo." />
+  <link rel="canonical" href="https://agusplaylab.github.io/slow-reveal/" />
+
+  <!-- Open Graph (WhatsApp / Meta) -->
+  <meta property="og:title" content="Empieza arriba…" />
+  <meta property="og:description" content="Desliza despacio ↓" />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://agusplaylab.github.io/slow-reveal/" />
+  <meta property="og:site_name" content="AgusPlayLab" />
+
+  <!-- Imagen (imprescindible para que salga la tarjeta con foto) -->
+  <meta property="og:image" content="https://agusplaylab.github.io/slow-reveal/preview.jpg" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="Desliza para descubrir" />
+  <meta property="og:image:type" content="image/jpeg" />
+
+  <!-- Twitter Card (fallback útil en muchos clientes) -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Empieza arriba…" />
+  <meta name="twitter:description" content="No bajes demasiado rápido ↓" />
+  <meta name="twitter:image" content="https://agusplaylab.github.io/slow-reveal/preview.jpg" />
+  
+  <!-- CSS -->
   <link rel="stylesheet" href="css/reveal.css" />
 </head>
+
 <body>
   <div class="reveal is-loading" id="reveal" role="region" aria-label="Comparador de imágenes vertical">
     <div class="reveal__canvas" id="canvas" aria-hidden="true">
@@ -21,12 +49,15 @@
         </button>
       </div>
     </div>
+
     <div class="reveal__hint" id="hint" aria-hidden="true">
-      <span class="hint__down">Desliza hacia abajo... con suavidad</span>
-      <span class="hint__up">Desliza hacia arriba... con suavidad</span>
+      <span class="hint__down">Desliza hacia abajo 🤪</span>
+      <span class="hint__up">Desliza hacia arriba 😘</span>
     </div>
+
     <div class="reveal__veil" aria-hidden="true"></div>
   </div>
+
   <script src="js/reveal.js" defer></script>
 </body>
 </html>
