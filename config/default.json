@@ -9,15 +9,15 @@
   "startIndex": 0,
   "cycle": true,
 
-  "initialSepDown": 25,
-  "initialSepUp": 75,
+  "initialSepDown": 12,
+  "initialSepUp": 88,
 
-  "commitThresholdPct": 90,
-  "commitDeltaPct": 16,
-  "commitCooldownMs": 450,
+  "commitThresholdPct": 82,
+  "commitDeltaPct": 10,
+  "commitCooldownMs": 350,
 
-  "clampMinPercent": 3,
-  "clampMaxPercent": 97,
+  "clampMinPercent": 6,
+  "clampMaxPercent": 94,
 
   "maxCanvasWidth": 100,
   "maxCanvasHeight": 100
