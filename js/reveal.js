@@ -49,7 +49,7 @@
   let rafId = null;
   let canvasRect = null;
 
-  const EASE_DRAG = 0.45;
+  const EASE_DRAG = 0.65;
   const EASE_IDLE = 0.18;
 
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));

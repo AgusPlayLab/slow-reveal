@@ -12,9 +12,9 @@
   "initialSepDown": 12,
   "initialSepUp": 88,
 
-  "commitThresholdPct": 82,
-  "commitDeltaPct": 10,
-  "commitCooldownMs": 350,
+  "commitThresholdPct": 84,
+  "commitDeltaPct": 9,
+  "commitCooldownMs": 280,
 
   "clampMinPercent": 6,
   "clampMaxPercent": 94,
