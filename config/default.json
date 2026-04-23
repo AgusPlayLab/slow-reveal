@@ -1,22 +1,23 @@
 {
-  "images": ["images/top.jpg", "images/bottom.jpg"],
+  "images": [
+    "images/01.jpg",
+    "images/02.jpg",
+    "images/03.jpg",
+    "images/04.jpg",
+    "images/05.jpg"
+  ],
+  "startIndex": 0,
+  "cycle": true,
 
-  "overlayOpacity": 1,
+  "initialSepDown": 25,
+  "initialSepUp": 75,
 
-  "edgeFade": true,
-  "fadeSize": 44,
+  "commitThresholdPct": 90,
+  "commitDeltaPct": 16,
+  "commitCooldownMs": 450,
 
-  "initialSepPercent": 25,
   "clampMinPercent": 3,
   "clampMaxPercent": 97,
-
-  "bgBlur": 24,
-  "bgDim": 0.38,
-  "bgSat": 1.10,
-
-  "hintDownThreshold": 58,
-  "hintUpThreshold": 42,
-  "hintAutoHideMs": 2800,
 
   "maxCanvasWidth": 100,
   "maxCanvasHeight": 100

@@ -1,11 +1,17 @@
-/* css/reveal.css */
+/* css/reveal.css — limpio, válido, mobile-first */
+
 * { box-sizing: border-box; }
 html, body { height: 100%; margin: 0; }
-body { background:#000; overflow:hidden; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
+body {
+  background: #000;
+  overflow: hidden;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+}
 
 .reveal{
-  --sep: 25%;                 /* separator inside CANVAS */
+  --sep: 25%;
   --fade-size: 44px;
+
   --bg-image: none;
   --bg-blur: 24px;
   --bg-dim: 0.38;
@@ -16,16 +22,16 @@ body { background:#000; overflow:hidden; font-family: system-ui, -apple-system, 
   width: 100vw;
   height: 100svh;
   background: #000;
+
   touch-action: none;
   user-select: none;
   -webkit-user-select: none;
 }
 
-/* Blur background (uses bottom image) */
 .reveal::before{
   content:"";
-  position:absolute;
-  inset:-50px;
+  position: absolute;
+  inset: -50px;
   background-image: var(--bg-image);
   background-size: cover;
   background-position: center;
@@ -33,54 +39,53 @@ body { background:#000; overflow:hidden; font-family: system-ui, -apple-system, 
   transform: scale(1.10);
   z-index: 0;
 }
+
 .reveal::after{
   content:"";
-  position:absolute;
-  inset:0;
+  position: absolute;
+  inset: 0;
   background: rgba(0,0,0,var(--bg-dim));
   z-index: 1;
 }
 
-/* Vignette */
 .reveal__veil{
-  position:absolute;
-  inset:0;
-  z-index:2;
-  pointer-events:none;
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
   background:
     radial-gradient(1200px 800px at 50% 40%,
       rgba(0,0,0,0.00) 0%,
       rgba(0,0,0,0.18) 55%,
       rgba(0,0,0,0.46) 100%);
-  opacity:.92;
+  opacity: .92;
 }
 
-/* CANVAS: JS sets its width/height so it matches the visible contain-rect */
 .reveal__canvas{
-  position:absolute;
-  left:50%;
-  top:50%;
+  position: absolute;
+  left: 50%;
+  top: 50%;
   transform: translate(-50%, -50%);
   width: 100%;
   height: 100%;
   z-index: 5;
-  overflow: visible;
   border-radius: 14px;
 }
 
-/* Images fill the canvas exactly (no cropping because canvas matches aspect ratio) */
 .reveal__img{
-  position:absolute;
-  inset:0;
-  width:100%;
-  height:100%;
-  object-fit: fill; /* canvas already matches aspect ratio */
-  display:block;
-  pointer-events:none;
-  -webkit-user-drag:none;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: fill; /* canvas ya lleva el aspect ratio correcto */
+  display: block;
+  pointer-events: none;
+  -webkit-user-drag: none;
   border-radius: 14px;
 }
+
 .reveal__img--bottom{ z-index: 1; }
+
 .reveal__img--top{
   z-index: 2;
   clip-path: inset(var(--sep) 0 0 0);
@@ -88,26 +93,25 @@ body { background:#000; overflow:hidden; font-family: system-ui, -apple-system, 
   transition: clip-path 120ms linear, opacity 160ms ease;
 }
 
-/* Slider inside canvas => aligned to canvas edges, not viewport */
 .reveal__slider{
-  position:absolute;
-  left:0;
-  right:0;
+  position: absolute;
+  left: 0;
+  right: 0;
   top: var(--sep);
-  height:0;
+  height: 0;
   z-index: 10;
-  pointer-events:auto;
+  pointer-events: auto;
 }
 
-/* Edge fade (optional) */
 .reveal__edge-fade{
-  position:absolute;
-  left:0; right:0;
-  top:0;
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
   height: var(--fade-size);
   transform: translateY(-50%);
-  pointer-events:none;
-  opacity: 0; /* enabled by JS */
+  pointer-events: none;
+  opacity: 0;
   background: linear-gradient(
     to bottom,
     rgba(255,255,255,0.00),
@@ -117,100 +121,122 @@ body { background:#000; overflow:hidden; font-family: system-ui, -apple-system, 
 }
 
 .reveal__line{
-  position:absolute;
+  position: absolute;
   left: 18px;
   right: 18px;
-  top:0;
-  height:2px;
+  top: 0;
+  height: 2px;
   transform: translateY(-50%);
   background: rgba(255,255,255,0.88);
-  border-radius:999px;
+  border-radius: 999px;
   box-shadow: 0 0 12px rgba(255,255,255,.28), 0 12px 22px rgba(0,0,0,.38);
-  pointer-events:none;
+  pointer-events: none;
 }
 
-/* Pro handle */
 .reveal__handle{
-  position:absolute;
-  left:50%;
-  top:0;
+  position: absolute;
+  left: 50%;
+  top: 0;
   transform: translate(-50%, -50%);
   width: 54px;
   height: 54px;
-  border-radius:999px;
+  border-radius: 999px;
   border: 1px solid rgba(255,255,255,.18);
   background: rgba(255,255,255,.90);
   box-shadow: 0 18px 44px rgba(0,0,0,0.55), 0 0 16px rgba(255,255,255,0.12);
-  display:grid;
-  place-items:center;
+  display: grid;
+  place-items: center;
   cursor: grab;
-  touch-action:none;
+  touch-action: none;
   transition: transform 160ms ease, background 160ms ease, box-shadow 160ms ease;
   backdrop-filter: blur(7px);
   -webkit-backdrop-filter: blur(7px);
 }
+
 .reveal__handle:active{ cursor: grabbing; }
+
 .reveal.is-dragging .reveal__handle{
   transform: translate(-50%, -50%) scale(1.06);
   background: rgba(255,255,255,.95);
   box-shadow: 0 22px 54px rgba(0,0,0,0.60), 0 0 18px rgba(255,255,255,0.16);
 }
-.reveal__handle svg{ width:22px; height:22px; opacity:.86; }
+
+.reveal__handle svg{ width: 22px; height: 22px; opacity: .86; }
 .reveal__handle path{ stroke: rgba(0,0,0,.72); }
 
-/* Pulse feedback */
-@keyframes pulse {
-  0% { transform: translate(-50%,-50%) scale(1.00); }
-  50%{ transform: translate(-50%,-50%) scale(1.10); }
-  100%{ transform: translate(-50%,-50%) scale(1.06); }
-}
-.reveal__handle.is-pulsing{ animation: pulse 220ms ease-in-out 1; }
-
-/* Hint (dynamic crossfade) */
+/* Hint */
 .reveal__hint{
-  position:absolute;
-  left:50%;
+  position: absolute;
+  left: 50%;
   top: calc(env(safe-area-inset-top) + 14px);
   transform: translateX(-50%);
   z-index: 20;
   min-width: 220px;
   padding: 8px 12px;
-  border-radius:999px;
+  border-radius: 999px;
   font-size: 14px;
-  letter-spacing:.2px;
   color: rgba(255,255,255,0.92);
   background: rgba(0,0,0,0.22);
   border: 1px solid rgba(255,255,255,0.14);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   box-shadow: 0 12px 30px rgba(0,0,0,.35);
-  pointer-events:none;
-  opacity: 1;
-  transition: opacity 260ms ease, transform 260ms ease;
+  pointer-events: none;
 }
 
-/* Stack spans in the same place for crossfade */
 .reveal__hint span{
-  position:absolute;
+  position: absolute;
   inset: 8px 12px;
-  display:grid;
-  place-items:center;
+  display: grid;
+  place-items: center;
   transition: opacity 220ms ease;
 }
+
 .reveal__hint .hint__down{ opacity: 1; }
 .reveal__hint .hint__up{ opacity: 0; }
 
-.reveal__hint.is-up .hint__down{ opacity:0; }
-.reveal__hint.is-up .hint__up{ opacity:1; }
+.reveal__hint.is-up .hint__down{ opacity: 0; }
+.reveal__hint.is-up .hint__up{ opacity: 1; }
 
-.reveal__hint.is-subtle{ opacity: .70; }
-.reveal__hint.is-hidden{
-  opacity:0;
-  transform: translateX(-50%) translateY(-8px);
+/* Progreso */
+.reveal__progress{
+  position: absolute;
+  top: calc(env(safe-area-inset-top) + 10px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 25;
+  display: flex;
+  gap: 6px;
+  padding: 8px 10px;
+  border-radius: 999px;
+  background: rgba(0,0,0,.18);
+  border: 1px solid rgba(255,255,255,.12);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  pointer-events: none;
 }
 
-/* Loading: hide canvas + slider + hint until both images preloaded */
+.reveal__dot{
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.35);
+  box-shadow: 0 0 10px rgba(255,255,255,.15);
+}
+
+.reveal__dot.is-active{
+  background: rgba(255,255,255,.95);
+  box-shadow: 0 0 12px rgba(255,255,255,.35);
+}
+
+/* Loading */
 .reveal.is-loading .reveal__canvas,
-.reveal.is-loading .reveal__hint{
+.reveal.is-loading .reveal__hint,
+.reveal.is-loading .reveal__progress{
   opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce){
+  .reveal__img--top{ transition: none; }
+  .reveal__handle{ transition: none; }
 }
