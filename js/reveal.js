@@ -49,6 +49,11 @@
   let rafId = null;
   let canvasRect = null;
 
+  // --- Flick (velocidad) para commit más fluido ---
+  let lastY = 0;
+  let lastT = 0;
+  let velocity = 0; // px/ms (positivo = hacia abajo, negativo = hacia arriba)
+
   const EASE_DRAG = 0.65;
   const EASE_IDLE = 0.18;
 
@@ -249,6 +254,11 @@
     updateCanvasRect();
     try { el.reveal.setPointerCapture(e.pointerId); } catch {}
 
+    // ✅ iniciar tracking de velocidad
+    lastY = e.clientY;
+    lastT = performance.now();
+    velocity = 0;
+
     targetSep = clientYToSep(e.clientY);
     ensureRAF();
   }
@@ -256,6 +266,15 @@
   function onPointerMove(e) {
     if (!isDragging) return;
     e.preventDefault();
+    
+    // ✅ calcular velocidad (px/ms)
+    const t = performance.now();
+    const dy = e.clientY - lastY;
+    const dt = Math.max(1, t - lastT);
+    velocity = dy / dt;
+    lastY = e.clientY;
+    lastT = t;
+
     targetSep = clientYToSep(e.clientY);
     ensureRAF();
   }
@@ -274,7 +293,17 @@
     targetSep = sepAtRelease;
     applySep(currentSep);
 
-    if (shouldCommit(sepAtRelease)) {
+    // ✅ Commit por flick + commit normal
+    const FLICK = 0.75; // prueba 0.65–1.0
+    const flickDown = velocity > FLICK;
+    const flickUp = velocity < -FLICK;
+
+    
+    const commitByFlick =
+      (phase === "down" && flickDown) ||
+      (phase === "up" && flickUp);
+
+    if (commitByFlick || shouldCommit(sepAtRelease)) {
       await commitAdvance();
     } else {
       targetSep = getRestSep();
